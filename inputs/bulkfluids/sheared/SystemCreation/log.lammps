@@ -1,0 +1,157 @@
+LAMMPS (29 Sep 2021 - Update 2)
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (src/comm.cpp:98)
+  using 1 OpenMP thread(s) per MPI task
+# LAMMPS input script
+# author : Simon Gravelle
+# https://lammpstutorials.github.io
+# https://lammpstutorials.github.io/tutorials/03-NanoconfinedElectrolyte.html
+
+# Initialisation
+units real
+atom_style full
+bond_style harmonic
+angle_style harmonic
+pair_style lj/cut/tip4p/long 1 2 1 1 0.1546 12.0
+kspace_style pppm/tip4p 1.0e-4
+
+# System definition
+lattice fcc 4.04
+Lattice spacing in x,y,z = 4.0400000 4.0400000 4.0400000
+region box block -4 4 -4 4 -13 13
+create_box 5 box            bond/types 1            angle/types 1            extra/bond/per/atom 2            extra/angle/per/atom 1            extra/special/per/atom 2
+Created orthogonal box = (-16.160000 -16.160000 -52.520000) to (16.160000 16.160000 52.520000)
+  1 by 1 by 1 MPI processor grid
+
+# create the walls
+region rbotwall block -4 4 -4 4 -12 -10
+region rtopwall block -4 4 -4 4 10 12
+region rwall union 2 rbotwall rtopwall
+create_atoms 5 region rwall
+Created 1280 atoms
+  using lattice units in orthogonal box = (-16.160000 -16.160000 -52.520000) to (16.160000 16.160000 52.520000)
+  create_atoms CPU = 0.001 seconds
+
+# create the fluid
+region rliquid block -4 4 -4 4 -9 9
+molecule h2omol TIP4P2005.txt
+Read molecule template h2omol:
+  1 molecules
+  0 fragments
+  3 atoms with max type 2
+  2 bonds with max type 1
+  1 angles with max type 1
+  0 dihedrals with max type 0
+  0 impropers with max type 0
+lattice sc 4.04
+Lattice spacing in x,y,z = 4.0400000 4.0400000 4.0400000
+create_atoms 0 region rliquid mol h2omol 482793
+Created 3648 atoms
+  using lattice units in orthogonal box = (-16.160000 -16.160000 -52.520000) to (16.160000 16.160000 52.520000)
+  create_atoms CPU = 0.001 seconds
+
+# deposit 20 ions
+fix mydep1 all deposit 10 3 1 56513 region rliquid near 0.3
+fix mydep2 all deposit 10 4 1 58613 region rliquid near 0.3
+
+# settings
+include ../PARM.lammps
+# LAMMPS parameter script
+# author : Simon Gravelle
+# lammpstutorials.github.io
+
+mass 1 15.9994 # water
+mass 2 1.008 # water
+mass 3 28.990 # ion
+mass 4 35.453 # ion
+mass 5 26.9815 # wall
+
+pair_coeff 1 1 0.185199 3.1589 # water
+pair_coeff 2 2 0.0 0.0 # water
+pair_coeff 3 3 0.04690 2.4299 # ion
+pair_coeff 4 4 0.1500 4.04470 # ion
+pair_coeff 5 5 11.697 2.574 # wall
+
+bond_coeff 1 0 0.9572 # water
+
+angle_coeff 1 0 104.52 # water
+
+
+# run
+run 10
+PPPM initialization ...
+  extracting TIP4P info from pair style
+  using 12-bit tables for long-range coulomb (src/kspace.cpp:340)
+  G vector (1/distance) = 0.21735333
+  grid = 15 15 36
+  stencil order = 5
+  estimated absolute RMS force accuracy = 0.02924706
+  estimated relative force accuracy = 8.8076653e-05
+  using double precision FFTW3
+  3d grid and FFT values/proc = 19844 8100
+Neighbor list info ...
+  update every 1 steps, delay 10 steps, check yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 14.3092
+  ghost atom cutoff = 14.3092
+  binsize = 7.1546, bins = 5 5 15
+  1 neighbor lists, perpetual/occasional/extra = 1 0 0
+  (1) pair lj/cut/tip4p/long, perpetual
+      attributes: half, newton on
+      pair build: half/bin/newton
+      stencil: half/bin/3d
+      bin: standard
+Per MPI rank memory allocation (min/avg/max) = 21.28 | 21.28 | 21.28 Mbytes
+Step Temp E_pair E_mol TotEng Press 
+       0            0   -106736.14            0   -106736.14   -20029.921 
+      10            0   -99316.261            0   -99316.261   -1171.8023 
+Loop time of 0.423445 on 1 procs for 10 steps with 4948 atoms
+
+Performance: 2.040 ns/day, 11.762 hours/ns, 23.616 timesteps/s
+99.6% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 0.18042    | 0.18042    | 0.18042    |   0.0 | 42.61
+Bond    | 0.00064963 | 0.00064963 | 0.00064963 |   0.0 |  0.15
+Kspace  | 0.017182   | 0.017182   | 0.017182   |   0.0 |  4.06
+Neigh   | 0.22049    | 0.22049    | 0.22049    |   0.0 | 52.07
+Comm    | 0.0029565  | 0.0029565  | 0.0029565  |   0.0 |  0.70
+Output  | 3.757e-05  | 3.757e-05  | 3.757e-05  |   0.0 |  0.01
+Modify  | 0.0012288  | 0.0012288  | 0.0012288  |   0.0 |  0.29
+Other   |            | 0.0004819  |            |       |  0.11
+
+Nlocal:        4948.00 ave        4948 max        4948 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:        17559.0 ave       17559 max       17559 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    1.37241e+06 ave 1.37241e+06 max 1.37241e+06 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 1372409
+Ave neighs/atom = 277.36641
+Ave special neighs/atom = 1.4745352
+Neighbor list builds = 10
+Dangerous builds = 0
+
+set type 3 charge 1.0
+Setting atom values ...
+  10 settings made for charge
+set type 4 charge -1.0
+Setting atom values ...
+  10 settings made for charge
+
+write_data system.data
+System init for write_data ...
+PPPM initialization ...
+  extracting TIP4P info from pair style
+  using 12-bit tables for long-range coulomb (src/kspace.cpp:340)
+  G vector (1/distance) = 0.21735333
+  grid = 15 15 36
+  stencil order = 5
+  estimated absolute RMS force accuracy = 0.02944634
+  estimated relative force accuracy = 8.8676777e-05
+  using double precision FFTW3
+  3d grid and FFT values/proc = 19844 8100
+write_dump all atom dump.lammpstrj
+Total wall time: 0:00:00

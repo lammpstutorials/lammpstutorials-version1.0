@@ -1,0 +1,144 @@
+LAMMPS (29 Sep 2021 - Update 2)
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (src/comm.cpp:98)
+  using 1 OpenMP thread(s) per MPI task
+# LAMMPS input script
+# author : Simon Gravelle
+# https://lammpstutorials.github.io
+# https://lammpstutorials.github.io/tutorials/03-NanoconfinedElectrolyte.html
+
+# Initialisation
+boundary p p p
+units real
+atom_style full
+bond_style harmonic
+angle_style harmonic
+pair_style lj/cut/tip4p/long 1 2 1 1 0.1546 12.0
+kspace_style pppm/tip4p 1.0e-4
+
+# System definition
+read_data ../Equilibration/system.data
+Reading data file ...
+  orthogonal box = (-16.160000 -16.160000 -52.520000) to (16.160000 16.160000 52.520000)
+  1 by 1 by 4 MPI processor grid
+  reading atoms ...
+  4948 atoms
+  reading velocities ...
+  4948 velocities
+  scanning bonds ...
+  2 = max bonds/atom
+  scanning angles ...
+  1 = max angles/atom
+  reading bonds ...
+  2432 bonds
+  reading angles ...
+  1216 angles
+Finding 1-2 1-3 1-4 neighbors ...
+  special bond factors lj:    0        0        0       
+  special bond factors coul:  0        0        0       
+     2 = max # of 1-2 neighbors
+     1 = max # of 1-3 neighbors
+     1 = max # of 1-4 neighbors
+     2 = max # of special neighbors
+  special bonds CPU = 0.002 seconds
+  read_data CPU = 0.041 seconds
+replicate 2 1 1
+Replicating atoms ...
+  orthogonal box = (-16.160000 -16.160000 -52.520000) to (48.480000 16.160000 52.520000)
+  2 by 1 by 2 MPI processor grid
+  9896 atoms
+  4864 bonds
+  2432 angles
+Finding 1-2 1-3 1-4 neighbors ...
+  special bond factors lj:    0        0        0       
+  special bond factors coul:  0        0        0       
+     2 = max # of 1-2 neighbors
+     1 = max # of 1-3 neighbors
+     1 = max # of 1-4 neighbors
+     2 = max # of special neighbors
+  special bonds CPU = 0.002 seconds
+  replicate CPU = 0.008 seconds
+change_box all z final -40 40
+Changing box ...
+  orthogonal box = (-16.160000 -16.160000 -40.000000) to (48.480000 16.160000 40.000000)
+
+# Simulation settings
+include ../PARM.lammps
+# LAMMPS parameter script
+# author : Simon Gravelle
+# lammpstutorials.github.io
+
+mass 1 15.9994 # water
+mass 2 1.008 # water
+mass 3 28.990 # ion
+mass 4 35.453 # ion
+mass 5 26.9815 # wall
+
+pair_coeff 1 1 0.185199 3.1589 # water
+pair_coeff 2 2 0.0 0.0 # water
+pair_coeff 3 3 0.04690 2.4299 # ion
+pair_coeff 4 4 0.1500 4.04470 # ion
+pair_coeff 5 5 11.697 2.574 # wall
+
+bond_coeff 1 0 0.9572 # water
+
+angle_coeff 1 0 104.52 # water
+
+
+# Groups
+group gH2O type 1 2
+7296 atoms in group gH2O
+group gNa type 3
+20 atoms in group gNa
+group gCl type 4
+20 atoms in group gCl
+group gliquid type 1 2 3 4
+7336 atoms in group gliquid
+group gwall type 5
+2560 atoms in group gwall
+region rtop block INF INF INF INF 0 INF
+region rbot block INF INF INF INF INF 0
+group gtop region rtop
+4918 atoms in group gtop
+group gbot region rbot
+4978 atoms in group gbot
+group gwalltop intersect gwall gtop
+1280 atoms in group gwalltop
+group gwallbot intersect gwall gbot
+1280 atoms in group gwallbot
+
+# Dynamics
+fix mynve all nve
+compute tliq gliquid temp
+fix myber1 gliquid temp/berendsen 300 300 100
+fix_modify myber1 temp tliq
+compute twall gwall temp/partial 0 1 1
+fix myber2 gwall temp/berendsen 300 300 100
+fix_modify myber2 temp twall
+fix myshk gH2O shake 1.0e-4 200 0 b 1 a 1
+       0 = # of size 2 clusters
+       0 = # of size 3 clusters
+       0 = # of size 4 clusters
+    2432 = # of frozen angles
+  find clusters CPU = 0.001 seconds
+fix myrct all recenter NULL NULL INIT
+
+# vizualisation
+dump mydmp all atom 500 dump.lammpstrj
+thermo 500
+thermo_modify temp tliq
+WARNING: Temperature for thermo pressure is not for group all (src/thermo.cpp:482)
+
+timestep 1.0
+run 5000
+PPPM initialization ...
+  extracting TIP4P info from pair style
+  using 12-bit tables for long-range coulomb (src/kspace.cpp:340)
+  G vector (1/distance) = 0.21833354
+  grid = 27 16 30
+  stencil order = 5
+  estimated absolute RMS force accuracy = 0.031728938
+  estimated relative force accuracy = 9.5550754e-05
+  using double precision FFTW3
+  3d grid and FFT values/proc = 8740 3456
+Neighbor list info ...
+  update every 1 steps, delay 1
